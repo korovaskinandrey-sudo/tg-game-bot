@@ -11,6 +11,8 @@ async def handle_message(message: types.Message):
     if message.from_user is None or message.from_user.is_bot:
         return
 
+    await db.count_message(message.from_user.id, message.chat.id)
+
     now = time.time()
     user = await db.get_user(message.from_user.id, message.chat.id)
 

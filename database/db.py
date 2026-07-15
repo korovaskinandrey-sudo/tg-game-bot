@@ -26,6 +26,24 @@ class Database:
         if self.db:
             await self.db.close()
 
+    async def count_message(self, user_id, chat_id):
+        cursor = await self.db.execute(
+            "SELECT 1 FROM users WHERE user_id = ? AND chat_id = ?",
+            (user_id, chat_id),
+        )
+        row = await cursor.fetchone()
+        if row is None:
+            await self.db.execute(
+                "INSERT INTO users (user_id, chat_id, xp, messages) VALUES (?, ?, 0, 1)",
+                (user_id, chat_id),
+            )
+        else:
+            await self.db.execute(
+                "UPDATE users SET messages = messages + 1 WHERE user_id = ? AND chat_id = ?",
+                (user_id, chat_id),
+            )
+        await self.db.commit()
+
     async def add_xp(self, user_id, chat_id, xp, current_time):
         cursor = await self.db.execute(
             "SELECT last_xp_time FROM users WHERE user_id = ? AND chat_id = ?",
