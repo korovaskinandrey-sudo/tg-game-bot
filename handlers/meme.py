@@ -1,49 +1,22 @@
 import random
+import aiohttp
 from datetime import datetime, timezone
 from aiogram import Router, types
 from aiogram.filters import Command
+from io import BytesIO
 
 router = Router()
 
-MEME_IMAGES = [
-    "https://i.imgflip.com/1h7in3.jpg",
-    "https://i.imgflip.com/2/4x60y0.jpg",
-    "https://i.imgflip.com/26am.jpg",
-    "https://i.imgflip.com/1otk96.jpg",
-    "https://i.imgflip.com/43a45p.jpg",
-    "https://i.imgflip.com/30b1gx.jpg",
-    "https://i.imgflip.com/2w4o2d.jpg",
-    "https://i.imgflip.com/28rk0g.jpg",
-    "https://i.imgflip.com/2ab7ty.jpg",
-    "https://i.imgflip.com/2a6t4g.jpg",
-    "https://i.imgflip.com/29v4tf.jpg",
-    "https://i.imgflip.com/4t0m5u.jpg",
-    "https://i.imgflip.com/486o2b.jpg",
-    "https://i.imgflip.com/4er2kg.jpg",
-    "https://i.imgflip.com/43i2zi.jpg",
-    "https://i.imgflip.com/4/30b1gx.jpg",
-    "https://i.imgflip.com/46tjik.jpg",
-    "https://i.imgflip.com/2hd.jpg",
-    "https://i.imgflip.com/39x0tp.jpg",
-    "https://i.imgflip.com/4a4f6s.jpg",
+MEME_SOURCES = [
+    "https://meme-api.com/gimme",
+    "https://meme-api.com/gimme/memes",
+    "https://meme-api.com/gimme/dankmemes",
 ]
 
-DARK_IMAGES = [
-    "https://i.imgflip.com/23w1k5.jpg",
-    "https://i.imgflip.com/39x0tp.jpg",
-    "https://i.imgflip.com/486o2b.jpg",
-    "https://i.imgflip.com/4er2kg.jpg",
-    "https://i.imgflip.com/4t0m5u.jpg",
-    "https://i.imgflip.com/43i2zi.jpg",
-    "https://i.imgflip.com/46tjik.jpg",
-    "https://i.imgflip.com/4a4f6s.jpg",
-    "https://i.imgflip.com/2hd.jpg",
-    "https://i.imgflip.com/29v4tf.jpg",
-    "https://i.imgflip.com/2a6t4g.jpg",
-    "https://i.imgflip.com/28rk0g.jpg",
-    "https://i.imgflip.com/2ab7ty.jpg",
-    "https://i.imgflip.com/2w4o2d.jpg",
-    "https://i.imgflip.com/26am.jpg",
+DARK_SOURCES = [
+    "https://meme-api.com/gimme/darkmemes",
+    "https://meme-api.com/gimme/DarkHumorAndMemes",
+    "https://meme-api.com/gimme/meanjokes",
 ]
 
 QUOTES = [
@@ -60,22 +33,69 @@ QUOTES = [
 ]
 
 
+async def download_image(url):
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url, timeout=aiohttp.ClientTimeout(total=10)) as resp:
+                if resp.status == 200:
+                    data = await resp.read()
+                    if len(data) > 1000:
+                        return data
+    except Exception:
+        pass
+    return None
+
+
+async def get_meme(sources):
+    for api_url in sources:
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.get(api_url, timeout=aiohttp.ClientTimeout(total=10)) as resp:
+                    if resp.status == 200:
+                        data = await resp.json()
+                        img_url = data.get("url", "")
+                        title = data.get("title", "")
+
+                        if img_url and img_url.endswith((".jpg", ".jpeg", ".png", ".gif")):
+                            img_data = await download_image(img_url)
+                            if img_data:
+                                return title, img_data
+
+                        if img_url and "reddit.com" not in img_url:
+                            img_data = await download_image(img_url)
+                            if img_data:
+                                return title, img_data
+        except Exception:
+            continue
+    return None, None
+
+
 @router.message(Command("meme"))
 async def meme(message: types.Message):
-    url = random.choice(MEME_IMAGES)
-    try:
-        await message.answer_photo(url, caption="🤣 Вот тебе мем:")
-    except Exception:
-        await message.answer("🤣 Мем:\n\nhttps://i.imgflip.com/1h7in3.jpg")
+    await message.answer("🔍 Ищу мем...")
+
+    title, img_data = await get_meme(MEME_SOURCES)
+    if img_data:
+        photo = BytesIO(img_data)
+        photo.name = "meme.jpg"
+        caption = f"🤣 {title}" if title else "🤣 Мем"
+        await message.answer_photo(photo, caption=caption)
+    else:
+        await message.answer("🤣 Мем загрузить не удалось, попробуй позже!")
 
 
 @router.message(Command("dark"))
 async def dark(message: types.Message):
-    url = random.choice(DARK_IMAGES)
-    try:
-        await message.answer_photo(url, caption="💀 Чёрный юмор:")
-    except Exception:
-        await message.answer("💀 Чёрный юмор:\n\nhttps://i.imgflip.com/23w1k5.jpg")
+    await message.answer("🔍 Ищу чёрный юмор...")
+
+    title, img_data = await get_meme(DARK_SOURCES)
+    if img_data:
+        photo = BytesIO(img_data)
+        photo.name = "dark.jpg"
+        caption = f"💀 {title}" if title else "💀 Чёрный юмор"
+        await message.answer_photo(photo, caption=caption)
+    else:
+        await message.answer("💀 Чёрный юмор загрузить не удалось, попробуй позже!")
 
 
 @router.message(Command("quote"))
