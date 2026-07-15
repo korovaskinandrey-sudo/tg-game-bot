@@ -19,24 +19,33 @@ QUOTES = [
     "💡 'Один XP — это лучше чем ноль XP.' — Философ",
 ]
 
+MEME_APIS = [
+    "https://meme-api.com/gimme",
+    "https://meme-api.com/gimme/memes",
+    "https://meme-api.com/gimme/dankmemes",
+    "https://meme-api.com/gimme/darkmemes",
+    "https://meme-api.com/gimme/me_irl",
+]
 
-async def fetch_meme(subreddit="memes"):
-    try:
-        async with aiohttp.ClientSession() as session:
-            url = f"https://www.reddit.com/r/{subreddit}/random.json?limit=1"
-            headers = {"User-Agent": "TelegramBot/1.0"}
-            async with session.get(url, headers=headers, timeout=aiohttp.ClientTimeout(total=10)) as resp:
-                if resp.status == 200:
-                    data = await resp.json()
-                    if data and data[0]["data"]["children"]:
-                        post = data[0]["data"]["children"][0]["data"]
-                        return {
-                            "title": post.get("title", ""),
-                            "url": post.get("url", ""),
-                            "permalink": f"https://reddit.com{post.get('permalink', '')}",
-                        }
-    except Exception:
-        pass
+DARK_APIS = [
+    "https://meme-api.com/gimme/darkmemes",
+    "https://meme-api.com/gimme/DarkHumorAndMemes",
+    "https://meme-api.com/gimme/meanjokes",
+    "https://meme-api.com/gimme/roastme",
+]
+
+
+async def fetch_meme(urls):
+    for api_url in urls:
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.get(api_url, timeout=aiohttp.ClientTimeout(total=10)) as resp:
+                    if resp.status == 200:
+                        data = await resp.json()
+                        if data and data.get("url"):
+                            return data
+        except Exception:
+            continue
     return None
 
 
@@ -44,14 +53,22 @@ async def fetch_meme(subreddit="memes"):
 async def meme(message: types.Message):
     await message.answer("🔍 Ищу мем...")
 
-    meme_data = await fetch_meme("memes")
-    if meme_data and meme_data["url"]:
-        text = f"🤣 Мем дня:\n\n{meme_data['title']}"
-        if meme_data["url"].endswith((".jpg", ".jpeg", ".png", ".gif")):
-            await message.answer_photo(meme_data["url"], caption=text)
-        else:
-            text += f"\n\n🔗 {meme_data['permalink']}"
-            await message.answer(text)
+    meme_data = await fetch_meme(MEME_APIS)
+    if meme_data:
+        title = meme_data.get("title", "")
+        url = meme_data.get("url", "")
+        text = f"🤣 Мем:\n\n{title}" if title else "🤣 Вот тебе мем:"
+
+        if url.endswith((".jpg", ".jpeg", ".png", ".gif")):
+            try:
+                await message.answer_photo(url, caption=text)
+                return
+            except Exception:
+                pass
+
+        if url:
+            text += f"\n\n🔗 {url}"
+        await message.answer(text)
     else:
         await message.answer("🤣 Мем дня:\n\nНе удалось загрузить мем, попробуй позже!")
 
@@ -60,16 +77,22 @@ async def meme(message: types.Message):
 async def dark(message: types.Message):
     await message.answer("🔍 Ищу чёрный юмор...")
 
-    meme_data = await fetch_meme("dankmemes")
-    if not meme_data:
-        meme_data = await fetch_meme("DarkHumorAndMemes")
-    if meme_data and meme_data["url"]:
-        text = f"💀 Чёрный юмор:\n\n{meme_data['title']}"
-        if meme_data["url"].endswith((".jpg", ".jpeg", ".png", ".gif")):
-            await message.answer_photo(meme_data["url"], caption=text)
-        else:
-            text += f"\n\n🔗 {meme_data['permalink']}"
-            await message.answer(text)
+    meme_data = await fetch_meme(DARK_APIS)
+    if meme_data:
+        title = meme_data.get("title", "")
+        url = meme_data.get("url", "")
+        text = f"💀 Чёрный юмор:\n\n{title}" if title else "💀 Вот тебе мем:"
+
+        if url.endswith((".jpg", ".jpeg", ".png", ".gif")):
+            try:
+                await message.answer_photo(url, caption=text)
+                return
+            except Exception:
+                pass
+
+        if url:
+            text += f"\n\n🔗 {url}"
+        await message.answer(text)
     else:
         await message.answer("💀 Чёрный юмор:\n\nНе удалось загрузить мем, попробуй позже!")
 
