@@ -6,6 +6,8 @@ from aiogram.client.session.aiohttp import AiohttpSession
 from config import TOKEN
 from database import db
 from handlers import profile_router, activity_router
+from handlers.daily import router as daily_router
+from handlers.admin import router as admin_router
 
 
 async def main():
@@ -18,6 +20,8 @@ async def main():
 
     dp.include_router(profile_router)
     dp.include_router(activity_router)
+    dp.include_router(daily_router)
+    dp.include_router(admin_router)
 
     logging.info("Bot started!")
     try:

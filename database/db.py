@@ -17,6 +17,9 @@ class Database:
                 xp INTEGER DEFAULT 0,
                 messages INTEGER DEFAULT 0,
                 last_xp_time REAL DEFAULT 0,
+                last_daily_time REAL DEFAULT 0,
+                streak INTEGER DEFAULT 0,
+                banned INTEGER DEFAULT 0,
                 PRIMARY KEY (user_id, chat_id)
             )
         """)
@@ -76,3 +79,85 @@ class Database:
             (chat_id, limit),
         )
         return await cursor.fetchall()
+
+    async def claim_daily(self, user_id, chat_id, current_time):
+        cursor = await self.db.execute(
+            "SELECT last_daily_time, streak, banned FROM users WHERE user_id = ? AND chat_id = ?",
+            (user_id, chat_id),
+        )
+        row = await cursor.fetchone()
+
+        if row is None:
+            await self.db.execute(
+                "INSERT INTO users (user_id, chat_id, xp, messages, last_daily_time, streak) VALUES (?, ?, 0, 0, ?, 1)",
+                (user_id, chat_id, current_time),
+            )
+            await self.db.commit()
+            return 10, 1
+
+        if row[2] == 1:
+            return None, None
+
+        last_daily, streak = row[0], row[1]
+        if last_daily and current_time - last_daily < 86400:
+            return None, None
+
+        if last_daily and current_time - last_daily < 172800:
+            streak += 1
+        else:
+            streak = 1
+
+        bonus = 10 * streak
+        await self.db.execute(
+            "UPDATE users SET xp = xp + ?, last_daily_time = ?, streak = ? WHERE user_id = ? AND chat_id = ?",
+            (bonus, current_time, streak, user_id, chat_id),
+        )
+        await self.db.commit()
+        return bonus, streak
+
+    async def reset_user(self, user_id, chat_id):
+        await self.db.execute(
+            "UPDATE users SET xp = 0, messages = 0, streak = 0 WHERE user_id = ? AND chat_id = ?",
+            (user_id, chat_id),
+        )
+        await self.db.commit()
+
+    async def set_xp(self, user_id, chat_id, xp):
+        cursor = await self.db.execute(
+            "SELECT 1 FROM users WHERE user_id = ? AND chat_id = ?",
+            (user_id, chat_id),
+        )
+        row = await cursor.fetchone()
+        if row is None:
+            await self.db.execute(
+                "INSERT INTO users (user_id, chat_id, xp, messages) VALUES (?, ?, ?, 0)",
+                (user_id, chat_id, xp),
+            )
+        else:
+            await self.db.execute(
+                "UPDATE users SET xp = ? WHERE user_id = ? AND chat_id = ?",
+                (xp, user_id, chat_id),
+            )
+        await self.db.commit()
+
+    async def ban_user(self, user_id, chat_id):
+        await self.db.execute(
+            "UPDATE users SET banned = 1 WHERE user_id = ? AND chat_id = ?",
+            (user_id, chat_id),
+        )
+        await self.db.commit()
+
+    async def unban_user(self, user_id, chat_id):
+        await self.db.execute(
+            "UPDATE users SET banned = 0 WHERE user_id = ? AND chat_id = ?",
+            (user_id, chat_id),
+        )
+        await self.db.commit()
+
+    async def is_banned(self, user_id, chat_id):
+        cursor = await self.db.execute(
+            "SELECT banned FROM users WHERE user_id = ? AND chat_id = ?",
+            (user_id, chat_id),
+        )
+        row = await cursor.fetchone()
+        return row and row[0] == 1

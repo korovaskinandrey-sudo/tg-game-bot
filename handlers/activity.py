@@ -11,6 +11,9 @@ async def handle_message(message: types.Message):
     if message.from_user is None or message.from_user.is_bot:
         return
 
+    if await db.is_banned(message.from_user.id, message.chat.id):
+        return
+
     await db.count_message(message.from_user.id, message.chat.id)
 
     now = time.time()
