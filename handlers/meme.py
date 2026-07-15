@@ -1,22 +1,64 @@
 import random
-import aiohttp
 from datetime import datetime, timezone
 from aiogram import Router, types
 from aiogram.filters import Command
-from io import BytesIO
 
 router = Router()
 
-MEME_SOURCES = [
-    "https://meme-api.com/gimme",
-    "https://meme-api.com/gimme/memes",
-    "https://meme-api.com/gimme/dankmemes",
+TEXT_MEMES = [
+    "🤣 Когда все онлайн, а ты один в лобби...",
+    "💀 Тиммейт умер от кулачка",
+    "🏆 Ты: 'Я профи!' | Реальность: 0 XP за день",
+    "😴 Когда ждёшь пока сервер поднимется",
+    "🔥 Тот момент когда получил 100 XP за одно сообщение",
+    "🤡 Когда забыл /daily и потерял серию",
+    "💀 Когда тебя убили в первый раз в игре",
+    "🏆 Топ-1 в топе, но всех забанили",
+    "😴 Ожидание: 5 минут | Реальность: 5 часов",
+    "🎮 Играем в Repo? | Нет, я на /slots",
+    "🔥 Когда серия 7 дней и бонус 70 XP",
+    "💀 Тот момент когда /bet съел весь XP",
+    "🏆 Когда все в топе, а ты>Last",
+    "😴 Когда напоминание приходит в 3 часа ночи",
+    "🎮 Давай мини-игру! | У нас уже есть слоты",
+    "🔥 Легенда: 1000 XP | Я: 10 XP и горжусь",
+    "💀 Когда /poll: 'Кто за?' | 0 голосов",
+    "🏆 Когда забыл пароль от аккаунта",
+    "😴 Когда бот упал, а ты не знаешь команд",
+    "🎮 Я: 'Давай в Repo!' | Тиммейт: '/slots'",
+    "💀 Когда вспомнил что забыл /daily",
+    "🤡 Ты забанил того кто писал сообщения",
+    "😴 Когда бот пишет 'не удалось загрузить мем'",
+    "🔥 Когда написал 100 сообщений а XP = 0",
+    "🏆 Топ-1 в топеinactive",
+    "💀 Когда дуэль закончилась ничьей",
+    "🤡 Когда сделал /bet на весь XP и проиграл",
+    "😴 Когда ждёшь пока Railway задеплоит",
+    "🎮 Репорт: бот съел мой XP",
+    "🔥 Когда серия 30 дней и бонус 300 XP",
 ]
 
-DARK_SOURCES = [
-    "https://meme-api.com/gimme/darkmemes",
-    "https://meme-api.com/gimme/DarkHumorAndMemes",
-    "https://meme-api.com/gimme/meanjokes",
+DARK_MEMES = [
+    "💀 Когда понял что жизнь — это просто бесконечный /daily",
+    "💀 Когда вспомнил что забыл /daily 2 дня подряд",
+    "💀 Когда сделал /bet и проиграл всё",
+    "💀 Когда бот пишет 'Ты уже получил бонус'",
+    "💀 Когда напоминание приходит в 3 часа ночи",
+    "💀 Когда тиммейт умер от кулачка",
+    "💀 Когда все в топе а ты последний",
+    "💀 Когда бот упал а ты не знаешь команд",
+    "💀 Когда забыл пароль от аккаунта",
+    "💀 Когда /poll: 'Кто за?' | 0 голосов",
+    "💀 Когда бот пишет 'не удалось загрузить мем'",
+    "💀 Когда написал 100 сообщений а XP = 0",
+    "💀 Когда дуэль закончилась ничьей",
+    "元宝 Ты: 'Я профи!' | Реальность: 0 XP за день",
+    "💀 Когда ждёшь пока Railway задеплоит",
+    "💀 Когда репорт: бот съел мой XP",
+    "💀 Когда понял что бот это единственный друг",
+    "💀 Когда сделал /ban а потом вспомнил что это ты",
+    "💀 Когда серия 30 дней а бот забыл",
+    "💀 Когда /unban не работает",
 ]
 
 QUOTES = [
@@ -33,69 +75,16 @@ QUOTES = [
 ]
 
 
-async def download_image(url):
-    try:
-        async with aiohttp.ClientSession() as session:
-            async with session.get(url, timeout=aiohttp.ClientTimeout(total=10)) as resp:
-                if resp.status == 200:
-                    data = await resp.read()
-                    if len(data) > 1000:
-                        return data
-    except Exception:
-        pass
-    return None
-
-
-async def get_meme(sources):
-    for api_url in sources:
-        try:
-            async with aiohttp.ClientSession() as session:
-                async with session.get(api_url, timeout=aiohttp.ClientTimeout(total=10)) as resp:
-                    if resp.status == 200:
-                        data = await resp.json()
-                        img_url = data.get("url", "")
-                        title = data.get("title", "")
-
-                        if img_url and img_url.endswith((".jpg", ".jpeg", ".png", ".gif")):
-                            img_data = await download_image(img_url)
-                            if img_data:
-                                return title, img_data
-
-                        if img_url and "reddit.com" not in img_url:
-                            img_data = await download_image(img_url)
-                            if img_data:
-                                return title, img_data
-        except Exception:
-            continue
-    return None, None
-
-
 @router.message(Command("meme"))
 async def meme(message: types.Message):
-    await message.answer("🔍 Ищу мем...")
-
-    title, img_data = await get_meme(MEME_SOURCES)
-    if img_data:
-        photo = BytesIO(img_data)
-        photo.name = "meme.jpg"
-        caption = f"🤣 {title}" if title else "🤣 Мем"
-        await message.answer_photo(photo, caption=caption)
-    else:
-        await message.answer("🤣 Мем загрузить не удалось, попробуй позже!")
+    text = random.choice(TEXT_MEMES)
+    await message.answer(text)
 
 
 @router.message(Command("dark"))
 async def dark(message: types.Message):
-    await message.answer("🔍 Ищу чёрный юмор...")
-
-    title, img_data = await get_meme(DARK_SOURCES)
-    if img_data:
-        photo = BytesIO(img_data)
-        photo.name = "dark.jpg"
-        caption = f"💀 {title}" if title else "💀 Чёрный юмор"
-        await message.answer_photo(photo, caption=caption)
-    else:
-        await message.answer("💀 Чёрный юмор загрузить не удалось, попробуй позже!")
+    text = random.choice(DARK_MEMES)
+    await message.answer(text)
 
 
 @router.message(Command("quote"))
