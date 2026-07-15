@@ -8,6 +8,7 @@ from database import db
 from handlers import profile_router, activity_router
 from handlers.daily import router as daily_router
 from handlers.admin import router as admin_router
+from handlers.stats import router as stats_router
 
 
 async def main():
@@ -21,6 +22,7 @@ async def main():
     dp.include_router(profile_router)
     dp.include_router(daily_router)
     dp.include_router(admin_router)
+    dp.include_router(stats_router)
     dp.include_router(activity_router)
 
     logging.info("Bot started!")

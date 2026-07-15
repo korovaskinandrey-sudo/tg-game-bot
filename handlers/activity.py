@@ -1,4 +1,5 @@
 import time
+from datetime import datetime, timezone
 from aiogram import Router, types
 from database import db
 from config import XP_PER_MESSAGE, XP_COOLDOWN_SECONDS
@@ -14,9 +15,12 @@ async def handle_message(message: types.Message):
     if await db.is_banned(message.from_user.id, message.chat.id):
         return
 
-    await db.count_message(message.from_user.id, message.chat.id)
-
     now = time.time()
+    hour = datetime.now(timezone.utc).hour
+
+    await db.count_message(message.from_user.id, message.chat.id)
+    await db.log_message(message.from_user.id, message.chat.id, now, hour)
+
     user = await db.get_user(message.from_user.id, message.chat.id)
 
     if user:

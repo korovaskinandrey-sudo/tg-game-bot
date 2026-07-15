@@ -23,6 +23,15 @@ class Database:
                 PRIMARY KEY (user_id, chat_id)
             )
         """)
+        await self.db.execute("""
+            CREATE TABLE IF NOT EXISTS message_logs (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER,
+                chat_id INTEGER,
+                timestamp REAL,
+                hour INTEGER
+            )
+        """)
         await self.db.commit()
 
     async def close(self):
@@ -161,3 +170,31 @@ class Database:
         )
         row = await cursor.fetchone()
         return row and row[0] == 1
+
+    async def log_message(self, user_id, chat_id, timestamp, hour):
+        await self.db.execute(
+            "INSERT INTO message_logs (user_id, chat_id, timestamp, hour) VALUES (?, ?, ?, ?)",
+            (user_id, chat_id, timestamp, hour),
+        )
+        await self.db.commit()
+
+    async def get_user_stats(self, user_id, chat_id, since):
+        cursor = await self.db.execute(
+            "SELECT COUNT(*) FROM message_logs WHERE user_id = ? AND chat_id = ? AND timestamp > ?",
+            (user_id, chat_id, since),
+        )
+        return (await cursor.fetchone())[0]
+
+    async def get_top_period(self, chat_id, since, limit=10):
+        cursor = await self.db.execute(
+            "SELECT user_id, COUNT(*) as cnt FROM message_logs WHERE chat_id = ? AND timestamp > ? GROUP BY user_id ORDER BY cnt DESC LIMIT ?",
+            (chat_id, since, limit),
+        )
+        return await cursor.fetchall()
+
+    async def get_hourly_activity(self, chat_id, since):
+        cursor = await self.db.execute(
+            "SELECT hour, COUNT(*) FROM message_logs WHERE chat_id = ? AND timestamp > ? GROUP BY hour ORDER BY hour",
+            (chat_id, since),
+        )
+        return await cursor.fetchall()
