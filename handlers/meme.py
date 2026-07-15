@@ -1,32 +1,10 @@
 import random
+import aiohttp
 from datetime import datetime, timezone
 from aiogram import Router, types
 from aiogram.filters import Command
 
 router = Router()
-
-MEMES = [
-    "🎮 Когда все онлайн, а ты один в лобби...",
-    "💀 Тиммейт умер от кулачка в_REPO",
-    "🏆 Ты: 'Я профи!' | Реальность: 0 XP за день",
-    "😴 Когда ждёшь пока сервер поднимется",
-    "🔥 Тот момент когда получил 100 XP за одно сообщение",
-    "🤡 Когда забыл /daily и потерял серию",
-    "💀 Когда тебя убили в первый раз в игре",
-    "🏆 Топ-1 в топе, но всех забанили",
-    "😴 Ожидание: 5 минут | Реальность: 5 часов",
-    "🎮 Играем в Repo? | Нет, я на /slots",
-    "🔥 Когда серия 7 дней и бонус 70 XP",
-    "💀 Тот момент когда /bet съел весь XP",
-    "🏆 Когда все в топе, а ты>Last",
-    "😴 Когда напоминание приходит в 3 часа ночи",
-    "🎮 Давай мини-игру! | У нас уже есть слоты",
-    "🔥 Легенда: 1000 XP | Я: 10 XP и горжусь",
-    "💀 Когда /poll: 'Кто за?' | 0 голосов",
-    "🏆 Когда забыл пароль от аккаунта",
-    "😴 Когда бот упал, а ты не знаешь команд",
-    "🎮 Я: 'Давай в Repo!' | Тиммейт: '/slots'",
-]
 
 QUOTES = [
     "💡 'XP не приходит к тем, кто сидит без дела.' — Мудрый Бот",
@@ -42,11 +20,58 @@ QUOTES = [
 ]
 
 
+async def fetch_meme(subreddit="memes"):
+    try:
+        async with aiohttp.ClientSession() as session:
+            url = f"https://www.reddit.com/r/{subreddit}/random.json?limit=1"
+            headers = {"User-Agent": "TelegramBot/1.0"}
+            async with session.get(url, headers=headers, timeout=aiohttp.ClientTimeout(total=10)) as resp:
+                if resp.status == 200:
+                    data = await resp.json()
+                    if data and data[0]["data"]["children"]:
+                        post = data[0]["data"]["children"][0]["data"]
+                        return {
+                            "title": post.get("title", ""),
+                            "url": post.get("url", ""),
+                            "permalink": f"https://reddit.com{post.get('permalink', '')}",
+                        }
+    except Exception:
+        pass
+    return None
+
+
 @router.message(Command("meme"))
 async def meme(message: types.Message):
-    today = datetime.now(timezone.utc).day
-    meme_text = MEMES[today % len(MEMES)]
-    await message.answer(f"🤣 Мем дня:\n\n{meme_text}")
+    await message.answer("🔍 Ищу мем...")
+
+    meme_data = await fetch_meme("memes")
+    if meme_data and meme_data["url"]:
+        text = f"🤣 Мем дня:\n\n{meme_data['title']}"
+        if meme_data["url"].endswith((".jpg", ".jpeg", ".png", ".gif")):
+            await message.answer_photo(meme_data["url"], caption=text)
+        else:
+            text += f"\n\n🔗 {meme_data['permalink']}"
+            await message.answer(text)
+    else:
+        await message.answer("🤣 Мем дня:\n\nНе удалось загрузить мем, попробуй позже!")
+
+
+@router.message(Command("dark"))
+async def dark(message: types.Message):
+    await message.answer("🔍 Ищу чёрный юмор...")
+
+    meme_data = await fetch_meme("dankmemes")
+    if not meme_data:
+        meme_data = await fetch_meme("DarkHumorAndMemes")
+    if meme_data and meme_data["url"]:
+        text = f"💀 Чёрный юмор:\n\n{meme_data['title']}"
+        if meme_data["url"].endswith((".jpg", ".jpeg", ".png", ".gif")):
+            await message.answer_photo(meme_data["url"], caption=text)
+        else:
+            text += f"\n\n🔗 {meme_data['permalink']}"
+            await message.answer(text)
+    else:
+        await message.answer("💀 Чёрный юмор:\n\nНе удалось загрузить мем, попробуй позже!")
 
 
 @router.message(Command("quote"))
@@ -54,9 +79,3 @@ async def quote(message: types.Message):
     today = datetime.now(timezone.utc).day
     quote_text = QUOTES[today % len(QUOTES)]
     await message.answer(quote_text)
-
-
-@router.message(Command("randommeme"))
-async def randommeme(message: types.Message):
-    meme_text = random.choice(MEMES)
-    await message.answer(f"🤣 Случайный мем:\n\n{meme_text}")
