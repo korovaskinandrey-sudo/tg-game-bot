@@ -1,4 +1,5 @@
 import random
+import urllib.parse
 from datetime import datetime, timezone
 from aiogram import Router, types
 from aiogram.filters import Command
@@ -7,58 +8,58 @@ import aiohttp
 
 router = Router()
 
-MEME_TEMPLATES = [
-    (61580, "Два кукловода"),  # Drake
-    (101470, "Сцена из фильма"),  # Disaster Girl
-    (87743020, "Три кнопки"),  # Three Buttons
-    (438680, "Batman Slapping Robin"),  # Batman
-    (181913649, "Drake Hotline Bling"),  # Drake
-    (93895088, "Expanding Brain"),  # Expanding Brain
-    (112126428, "Distracted Boyfriend"),  # Distracted Boyfriend
-    (61585, "Burn Kermit"),  # Kermit
-    (222403160, "Bernie I Am Once Again"),  # Bernie
-    (135256802, "Epic Handshake"),  # Epic Handshake
-    (247375501, "Buff Doge vs Cheems"),  # Buff Doge
-    (4087833, "Waiting Skeleton"),  # Waiting
-    (91538330, "X, X Everywhere"),  # X
-    (61520, "Futurama Fry"),  # Fry
-    (101287, "Third World Skeptical Kid"),  # Skeptical
+TEMPLATES = [
+    "drake", "dsb", "buzz", "doge", "cmm",
+    "afraid", "awkward", "cheems", "expanding",
+    "panik", "kbd", "stewart", "rollsafe",
+    "left", "two-buttons", "uno", "change",
+    "iapologize", "bernice", "trump",
 ]
 
 MEME_TEXTS = [
-    ("Когда все в топе\nА ты>Last", "Но зато у тебя есть /daily"),
+    ("Когда все в топе", "А ты Last"),
     ("Давай мини-игру", "У нас уже есть /slots"),
-    ("Я: Давай в Repo\nТиммейт: /slots", ""),
-    ("Когда забыл /daily\nИ потерял серию", "Но зато вспомнил вовремя"),
-    ("Когда сделал /bet\nИ проиграл всё", "Но зато получил опыт"),
-    ("Когда бот упал\nА ты не знаешь команд", "Жди пока Railway задеплоит"),
-    ("Когда написал 100 сообщений\nА XP = 0", "Зато есть сообщения в топе"),
-    ("Когда серия 7 дней\nИ бонус 70 XP", "Это лучше чем /slots"),
-    ("Когда /poll: Кто за?\n0 голосов", "Зато есть ты"),
-    ("Когда дуэль закончилась\nНичьей", "XP не забирается"),
-    ("Когда вспомнил что забыл\n/daily 2 дня подряд", "Серия = 0"),
-    ("Когда бот пишет\n'не удалось загрузить мем'", "Но вот тебе текстовый"),
-    ("Когда тиммейт умер\nОт кулачка", "Респект тиммейту"),
-    ("Когда все онлайн\nА ты один в лобби", "Зато есть бот"),
-    ("Когда /ban а потом\nВспомнил что это ты", "Ой"),
+    ("Я: Давай в Repo", "Тиммейт: /slots"),
+    ("Когда забыл /daily", "И потерял серию"),
+    ("Когда сделал /bet", "И проиграл всё"),
+    ("Когда бот упал", "А ты не знаешь команд"),
+    ("Когда написал 100 сообщений", "А XP = 0"),
+    ("Когда серия 7 дней", "И бонус 70 XP"),
+    ("Когда /poll Кто за", "0 голосов"),
+    ("Когда дуэль закончилась", "Ничьей"),
+    ("Когда вспомнил что забыл daily", "2 дня подряд"),
+    ("Когда тиммейт умер", "От кулачка"),
+    ("Когда все онлайн", "А ты один в лобби"),
+    ("Когда бот пишет не удалось", "Загрузить мем"),
+    ("КогдаLegenda", "1000 XP"),
+    ("Когда сделал /ban", "А потом вспомнил что это ты"),
+    ("Когда бот это единственный друг", "Грустно"),
+    ("Когда серия 30 дней", "А бот забыл"),
+    ("Когда /unban не работает", "Помогите"),
+    ("Когда понял что жизнь это бесконечный daily", ""),
 ]
 
 DARK_TEXTS = [
-    ("Когда понял что жизнь\nЭто просто бесконечный /daily", ""),
-    ("Когда забыл /daily\n2 дня подряд", "Серия = 0, мотивация = 0"),
-    ("Когда сделал /bet\nИ проиграл всё", "Зато теперь не надо думать"),
-    ("Когда бот пишет\n'Ты уже получил бонус'", "А ты хотел ещё"),
-    ("Когда напоминание приходит\nВ 3 часа ночи", "Спасибо боту"),
-    ("Когда все в топе\nА ты последний", "Зато ты в топе... по сообщениям"),
-    ("Когда бот упал\nА ты не знаешь команд", "Добро пожаловать в ад"),
-    ("Когда забыл пароль\nОт аккаунта", "Ха-ха"),
-    ("Когда /poll: Кто за?\n0 голосов", "Одинокий голосование"),
-    ("Когда бот пишет\n'не удалось загрузить мем'", "Ты тоже не можешь"),
-    ("Когда написал 100 сообщений\nА XP = 0", "Ты просто говорливый"),
-    ("Когда дуэль закончилась\nНичьей", "Два проигравших"),
-    ("Когда понял что бот\nЭто единственный друг", "Грустно"),
-    ("Когда сделал /ban\nА потом вспомнил что это ты", "Сам себя забанил"),
-    ("Когда серия 30 дней\nА бот забыл", "Пора менять бота"),
+    ("Когда понял что жизнь", "Это бесконечный daily"),
+    ("Когда забыл daily 2 дня", "Серия = 0, мотивация = 0"),
+    ("Когда сделал /bet", "И проиграл всё"),
+    ("Когда бот пишет Ты уже получил", "А ты хотел ещё"),
+    ("Когда напоминание в 3 часа ночи", "Спасибо боту"),
+    ("Когда все в топе а ты последний", "Зато ты в топе по сообщениям"),
+    ("Когда бот упал", "Добро пожаловать в ад"),
+    ("Когда забыл пароль", "Ха-ха"),
+    ("Когда 0 голосов", "Одинокий голосование"),
+    ("Когда бот не может загрузить мем", "Ты тоже не можешь"),
+    ("Когда 100 сообщений XP = 0", "Ты просто говорливый"),
+    ("Когда дуэль ничья", "Два проигравших"),
+    ("Когда понял что бот это друг", "Грустно"),
+    ("Когда сам себя забанил", "Ой"),
+    ("Когда серия 30 дней а бот забыл", "Пора менять бота"),
+    ("Когда дуэль", "Ничья"),
+    ("Когда бот это единственный друг", ""),
+    ("Когда забыл daily 3 дня", "Кто ты теперь"),
+    ("Когда бот не работает", "Паника"),
+    ("Когда XP отрицательный", "Это возможно?"),
 ]
 
 QUOTES = [
@@ -75,28 +76,16 @@ QUOTES = [
 ]
 
 
-async def create_meme(template_id, text0, text1):
+async def generate_meme(template, text0, text1):
     try:
+        t0 = urllib.parse.quote(text0.replace(" ", "_"))
+        t1 = urllib.parse.quote(text1.replace(" ", "_")) if text1 else ""
+        url = f"https://api.memegen.link/images/{template}/{t0}/{t1}.jpg"
+
         async with aiohttp.ClientSession() as session:
-            data = {
-                "template_id": template_id,
-                "username": "TgGameBot",
-                "password": "TgGameBot123",
-                "text0": text0,
-                "text1": text1,
-            }
-            async with session.post(
-                "https://api.imgflip.com/caption_image",
-                data=data,
-                timeout=aiohttp.ClientTimeout(total=15),
-            ) as resp:
+            async with session.get(url, timeout=aiohttp.ClientTimeout(total=15)) as resp:
                 if resp.status == 200:
-                    result = await resp.json()
-                    if result.get("success"):
-                        url = result["data"]["url"]
-                        async with session.get(url, timeout=aiohttp.ClientTimeout(total=10)) as img_resp:
-                            if img_resp.status == 200:
-                                return await img_resp.read()
+                    return await resp.read()
     except Exception:
         pass
     return None
@@ -106,10 +95,10 @@ async def create_meme(template_id, text0, text1):
 async def meme(message: types.Message):
     await message.answer("🤣 Генерирую мем...")
 
-    template_id, _ = random.choice(MEME_TEMPLATES)
+    template = random.choice(TEMPLATES)
     text0, text1 = random.choice(MEME_TEXTS)
 
-    img_data = await create_meme(template_id, text0, text1)
+    img_data = await generate_meme(template, text0, text1)
     if img_data:
         photo = BytesIO(img_data)
         photo.name = "meme.jpg"
@@ -122,10 +111,10 @@ async def meme(message: types.Message):
 async def dark(message: types.Message):
     await message.answer("💀 Генерирую чёрный юмор...")
 
-    template_id, _ = random.choice(MEME_TEMPLATES)
+    template = random.choice(TEMPLATES)
     text0, text1 = random.choice(DARK_TEXTS)
 
-    img_data = await create_meme(template_id, text0, text1)
+    img_data = await generate_meme(template, text0, text1)
     if img_data:
         photo = BytesIO(img_data)
         photo.name = "dark.jpg"
