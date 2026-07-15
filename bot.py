@@ -19,9 +19,9 @@ async def main():
     await db.connect()
 
     dp.include_router(profile_router)
-    dp.include_router(activity_router)
     dp.include_router(daily_router)
     dp.include_router(admin_router)
+    dp.include_router(activity_router)
 
     logging.info("Bot started!")
     try:
