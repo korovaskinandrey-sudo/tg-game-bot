@@ -13,6 +13,7 @@ from handlers.games import router as games_router
 from handlers.utils import router as utils_router
 from handlers.welcome import router as welcome_router
 from handlers.help import router as help_router
+from handlers.meme import router as meme_router
 
 
 async def main():
@@ -31,6 +32,7 @@ async def main():
     dp.include_router(utils_router)
     dp.include_router(welcome_router)
     dp.include_router(help_router)
+    dp.include_router(meme_router)
     dp.include_router(activity_router)
 
     logging.info("Bot started!")
