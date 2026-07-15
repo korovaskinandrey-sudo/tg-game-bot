@@ -5,6 +5,13 @@ from config import get_level, LEVELS
 
 router = Router()
 
+LEVEL_PERKS = {
+    "Новичок": "Начни писать чтобы получить XP!",
+    "Игрок": "🔓 Доступ к /bet (ставки на XP)",
+    "Про": "🔓 Доступ к /bet (2x множитель)\n🔓 Приоритет в топе",
+    "Легенда": "🔓 Доступ ко всем мини-играм\n🔓 Двойной ежедневный бонус\n👑 Титул Легенды",
+}
+
 
 @router.message(Command("profile"))
 async def profile(message: types.Message):
@@ -18,6 +25,7 @@ async def profile(message: types.Message):
 
     xp, messages, _ = user
     level = get_level(xp)
+    perks = LEVEL_PERKS.get(level, "")
 
     next_level_xp = None
     for name, req_xp in sorted(LEVELS.items(), key=lambda x: x[1]):
@@ -29,7 +37,8 @@ async def profile(message: types.Message):
         f"🎮 Профиль: {message.from_user.full_name}\n\n"
         f"📊 Уровень: {level}\n"
         f"⭐ Опыт: {xp}\n"
-        f"💬 Сообщений: {messages}"
+        f"💬 Сообщений: {messages}\n\n"
+        f"🎁 Бонусы уровня:\n{perks}"
     )
     if next_level_xp:
         text += f"\n\n📈 До следующего уровня: {next_level_xp - xp} XP"
