@@ -1,1 +1,2 @@
-web: false
+[build]
+builder = "dockerfile"
