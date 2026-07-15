@@ -16,7 +16,7 @@ async def profile(message: types.Message):
         await message.answer("Ты ещё не написал ни одного сообщения!")
         return
 
-    xp, messages = user
+    xp, messages, _ = user
     level = get_level(xp)
 
     next_level_xp = None
